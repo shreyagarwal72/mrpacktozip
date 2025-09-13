@@ -2,6 +2,7 @@ import { FileArchive, Zap, Shield, Download } from "lucide-react"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { FileUpload } from "@/components/FileUpload"
 import { FeatureCard } from "@/components/FeatureCard"
+import { InstallButton } from "@/components/InstallButton"
 
 const Index = () => {
   return (
@@ -26,7 +27,10 @@ const Index = () => {
               MRPack Converter
             </h1>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-3">
+            <InstallButton />
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
@@ -104,6 +108,9 @@ const Index = () => {
         <div className="container mx-auto px-4 text-center">
           <p className="text-sm text-muted-foreground">
             Built with 💜 for the Minecraft modding community
+          </p>
+          <p className="text-xs text-muted-foreground/60 mt-2">
+            © 2025 Nextup Studio. All rights reserved.
           </p>
         </div>
       </footer>
