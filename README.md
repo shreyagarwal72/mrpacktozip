@@ -1,73 +1,121 @@
-# Welcome to your Lovable project
+# MRPack Converter - Bidirectional Modpack Converter
 
-## Project info
+Convert between Modrinth (.mrpack) and ZIP formats effortlessly with our free, fast, and secure online converter.
 
-**URL**: https://lovable.dev/projects/432425b5-1969-47c4-addf-84faa28018d5
+## 🚀 Features
 
-## How can I edit this code?
+### MRPACK to ZIP Conversion
+- Convert Modrinth modpacks to universal ZIP format
+- Compatible with CurseForge, ATLauncher, and other Minecraft launchers
+- Downloads all mod files automatically
+- Preserves override files and configurations
+- Fast, reliable conversion with progress tracking
 
-There are several ways of editing your application.
+### ZIP to MRPACK Conversion
+- Transform modpack ZIP files into Modrinth-compatible format
+- Extracts and preserves configuration files
+- Creates proper modrinth.index.json structure
+- Supports multiple mod loaders (Fabric, Forge, Quilt, NeoForge)
+- Provides detailed mod file documentation
 
-**Use Lovable**
+## 🛠️ How It Works
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/432425b5-1969-47c4-addf-84faa28018d5) and start prompting.
+### Converting MRPACK to ZIP
+1. Upload your .mrpack file
+2. Our tool extracts the modrinth.index.json
+3. Downloads all mod files from their original sources
+4. Packages everything into a universal ZIP format
+5. Download your converted modpack
 
-Changes made via Lovable will be committed automatically to this repo.
+### Converting ZIP to MRPACK
+1. Upload your modpack ZIP file
+2. Tool analyzes the structure and manifest
+3. Extracts override files (configs, scripts, resources)
+4. Creates proper MRPACK structure with modrinth.index.json
+5. Generates documentation for mod files
+6. Download your MRPACK file
 
-**Use your preferred IDE**
+## 🔒 Privacy & Security
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- **Client-side processing**: All conversions happen in your browser
+- **No file uploads**: Your files never leave your device
+- **No data collection**: We don't store or track your files
+- **Open source**: Full transparency in our conversion process
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## 🎯 Use Cases
 
-Follow these steps:
+- **Modpack developers**: Share your packs across different platforms
+- **Players**: Use Modrinth packs in your preferred launcher
+- **Server admins**: Convert between formats for different server setups
+- **Content creators**: Distribute modpacks in multiple formats
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## 📋 Supported Formats
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Input Formats
+- **.mrpack** (Modrinth modpack format)
+- **.zip** (Standard modpack ZIP files)
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Output Formats
+- **.zip** (Universal modpack format)
+- **.mrpack** (Modrinth-compatible format)
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+### Mod Loaders Supported
+- Fabric
+- Forge
+- Quilt
+- NeoForge
 
-**Edit a file directly in GitHub**
+## ⚡ Performance
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- **Lightning fast**: Convert modpacks in seconds
+- **Large file support**: Handle modpacks of any size
+- **Progress tracking**: Real-time conversion status
+- **Error handling**: Clear feedback on any issues
 
-**Use GitHub Codespaces**
+## 🌟 Why Choose Our Converter?
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+1. **Free Forever**: No subscriptions or hidden costs
+2. **No Registration**: Start converting immediately
+3. **Cross-Platform**: Works on any device with a web browser
+4. **Regular Updates**: Continuously improved and maintained
+5. **Community Driven**: Built for the Minecraft modding community
 
-## What technologies are used for this project?
+## 📱 Progressive Web App
+
+Install our converter as a PWA for:
+- Offline functionality
+- Native app experience
+- Quick access from your device
+- Automatic updates
+
+## 🔧 Technical Details
+
+### MRPACK Format
+- Follows official Modrinth specification
+- Supports format version 1
+- Includes proper file hashing for integrity
+- Maintains mod environment specifications
+
+### ZIP Format
+- Creates CurseForge-compatible manifest.json
+- Organizes mods in proper directory structure
+- Preserves override files and configurations
+- Supports multiple mod loader configurations
+
+## 🤝 Contributing
 
 This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
+- React + TypeScript
 - Tailwind CSS
+- JSZip for file processing
+- Vite for build tooling
 
-## How can I deploy this project?
+## 📄 License
 
-Simply open [Lovable](https://lovable.dev/projects/432425b5-1969-47c4-addf-84faa28018d5) and click on Share -> Publish.
+© 2025 Nextup Studio. All rights reserved.
 
-## Can I connect a custom domain to my Lovable project?
+Built with 💜 for the Minecraft modding community.
 
-Yes, you can!
+---
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+**Need help?** Our converter handles the technical complexity so you don't have to!

@@ -113,13 +113,13 @@ export function FileUpload() {
             const loader = manifest.minecraft.modLoaders[0]
             if (loader.id.includes('forge')) {
               loaderType = 'forge'
-              loaderVersion = loader.id.split('-')[1] || '40.2.0'
+              loaderVersion = loader.id.split('-')[1] || '47.2.0'
             } else if (loader.id.includes('fabric')) {
               loaderType = 'fabric'
-              loaderVersion = loader.id.split('-')[1] || '0.14.21'
+              loaderVersion = loader.id.split('-')[1] || '0.15.11'
             } else if (loader.id.includes('quilt')) {
               loaderType = 'quilt'
-              loaderVersion = loader.id.split('-')[1] || '0.19.0'
+              loaderVersion = loader.id.split('-')[1] || '0.25.0'
             } else if (loader.id.includes('neoforge')) {
               loaderType = 'neoforge'
               loaderVersion = loader.id.split('-')[1] || '20.4.190'
@@ -146,20 +146,15 @@ export function FileUpload() {
         }
       }
       
-      setConversion(prev => ({ ...prev, progress: 35, currentStep: 'Processing mod files...' }))
+      setConversion(prev => ({ ...prev, progress: 35, currentStep: 'Processing files...' }))
       
       // Create new MRPACK
       const mrpackZip = new JSZip()
       
-      // Process mod files and other content
-      const modsFolder = zipFile.folder('mods') || zipFile.folder('overrides/mods')
+      // Process override files (configs, resources, etc.)
       const overridesFolder = zipFile.folder('overrides')
+      let overrideCount = 0
       
-      let modCount = 0
-      const totalFiles = Object.keys(zipFile.files).length
-      let processedFiles = 0
-      
-      // Copy override files
       if (overridesFolder) {
         const overridesOutput = mrpackZip.folder('overrides')
         for (const [path, file] of Object.entries(overridesFolder.files)) {
@@ -167,85 +162,57 @@ export function FileUpload() {
             const content = await file.async('arraybuffer')
             const relativePath = path.replace('overrides/', '')
             overridesOutput?.file(relativePath, content)
+            overrideCount++
           }
-          processedFiles++
-          setConversion(prev => ({ 
-            ...prev, 
-            progress: 35 + (processedFiles / totalFiles) * 40,
-            currentStep: `Processing ${path.split('/').pop()}...`
-          }))
         }
       }
       
-      // Process mod files - note: we can't download them again, so we create file entries without downloads
+      // Also check for root-level config files and resources
+      for (const [path, file] of Object.entries(zipFile.files)) {
+        if (!file.dir && 
+            !path.includes('mods/') && 
+            !path.endsWith('.jar') && 
+            !path.endsWith('.zip') &&
+            path !== 'manifest.json' &&
+            (path.includes('config/') || path.includes('scripts/') || path.includes('resources/') || 
+             path.endsWith('.toml') || path.endsWith('.json') || path.endsWith('.txt'))) {
+          const content = await file.async('arraybuffer')
+          const overridesOutput = mrpackZip.folder('overrides')
+          overridesOutput?.file(path, content)
+          overrideCount++
+        }
+      }
+      
+      setConversion(prev => ({ ...prev, progress: 75, currentStep: 'Creating note about mod files...' }))
+      
+      // Count mod files and create a note
+      const modFiles: string[] = []
+      const modsFolder = zipFile.folder('mods') || zipFile.folder('overrides/mods')
+      
       if (modsFolder) {
         for (const [path, file] of Object.entries(modsFolder.files)) {
           if (!file.dir && (path.endsWith('.jar') || path.endsWith('.zip'))) {
             const fileName = path.split('/').pop() || 'unknown.jar'
-            const content = await file.async('arraybuffer')
-            
-            // Calculate basic hash (simplified - in real implementation you'd want proper SHA1/SHA512)
-            const hashBuffer = await crypto.subtle.digest('SHA-256', content)
-            const hashArray = Array.from(new Uint8Array(hashBuffer))
-            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-            
-            modrinthIndex.files.push({
-              path: `mods/${fileName}`,
-              hashes: {
-                sha1: hashHex.substring(0, 40), // Simplified hash
-                sha512: hashHex
-              },
-              downloads: [], // Empty since we can't provide download URLs
-              fileSize: content.byteLength,
-              env: {
-                client: 'required',
-                server: 'required'
-              }
-            })
-            
-            // Add mod file to MRPACK
-            mrpackZip.file(`mods/${fileName}`, content)
-            modCount++
+            modFiles.push(fileName)
           }
-          processedFiles++
-          setConversion(prev => ({ 
-            ...prev, 
-            progress: 35 + (processedFiles / totalFiles) * 40,
-            currentStep: `Processing mod: ${path.split('/').pop()}...`
-          }))
         }
       }
       
       // Also check for mods in root directory
       for (const [path, file] of Object.entries(zipFile.files)) {
         if (!file.dir && (path.endsWith('.jar') || path.endsWith('.zip')) && !path.includes('/')) {
-          const content = await file.async('arraybuffer')
-          
-          // Calculate basic hash
-          const hashBuffer = await crypto.subtle.digest('SHA-256', content)
-          const hashArray = Array.from(new Uint8Array(hashBuffer))
-          const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-          
-          modrinthIndex.files.push({
-            path: `mods/${path}`,
-            hashes: {
-              sha1: hashHex.substring(0, 40),
-              sha512: hashHex
-            },
-            downloads: [],
-            fileSize: content.byteLength,
-            env: {
-              client: 'required',
-              server: 'required'
-            }
-          })
-          
-          mrpackZip.file(`mods/${path}`, content)
-          modCount++
+          modFiles.push(path)
         }
       }
       
-      setConversion(prev => ({ ...prev, progress: 85, currentStep: 'Finalizing MRPACK...' }))
+      // Create a note file about the mods
+      if (modFiles.length > 0) {
+        const modListNote = `# Mod Files Found in ZIP\n\nThis modpack contained ${modFiles.length} mod files:\n\n${modFiles.map(mod => `- ${mod}`).join('\n')}\n\n**Important Note:**\nMRPACK files are designed to reference mods from external sources (like Modrinth or CurseForge) rather than embedding them directly. To create a proper MRPACK for upload to Modrinth, you would need to:\n\n1. Find each mod on Modrinth or CurseForge\n2. Add the download URLs to the modrinth.index.json file\n3. Include proper file hashes for verification\n\nThis conversion includes only the override files (configs, scripts, resources) from your ZIP file.`
+        
+        mrpackZip.file('MODS_README.md', modListNote)
+      }
+      
+      setConversion(prev => ({ ...prev, progress: 90, currentStep: 'Finalizing MRPACK...' }))
       
       // Add the modrinth.index.json file
       mrpackZip.file('modrinth.index.json', JSON.stringify(modrinthIndex, null, 2))
@@ -272,7 +239,7 @@ export function FileUpload() {
       
       toast({
         title: "Conversion successful!",
-        description: `${fileName} is ready for download with ${modCount} mods.`,
+        description: `${fileName} created with ${overrideCount} override files. See MODS_README.md for mod information.`,
       })
       
     } catch (error) {
@@ -280,7 +247,7 @@ export function FileUpload() {
       setConversion({ 
         status: 'error', 
         progress: 0, 
-        error: error instanceof Error ? error.message : 'Failed to convert file. Please ensure it\'s a valid ZIP file with mod content.'
+        error: error instanceof Error ? error.message : 'Failed to convert file. Please ensure it\'s a valid modpack ZIP file.'
       })
       
       toast({
