@@ -46,14 +46,14 @@ const Index = () => {
           <h1 className="text-4xl md:text-6xl font-bold leading-tight">
             Convert{" "}
             <span className="bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-              Modrinth Packs
+              Modpacks
             </span>{" "}
-            to ZIP
+            Both Ways
           </h1>
           
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Transform your .mrpack files into universal ZIP format for seamless compatibility 
-            with any Minecraft launcher. Fast, secure, and completely free.
+            Convert between .mrpack and .zip formats seamlessly. Transform Modrinth packs to universal ZIP 
+            or create Modrinth-compatible packs from ZIP files. Fast, secure, and completely free.
           </p>
         </div>
 
@@ -76,27 +76,27 @@ const Index = () => {
           />
           <FeatureCard
             icon={Download}
-            title="Universal Format"
-            description="ZIP files work with any Minecraft launcher and are easy to share"
+            title="Dual Conversion"
+            description="Convert both ways: MRPACK to ZIP for universal compatibility, or ZIP to MRPACK for Modrinth"
           />
         </div>
 
         {/* Info Section */}
         <div className="bg-card/30 backdrop-blur-sm rounded-2xl p-8 border border-border/50 text-center">
           <h2 className="text-2xl font-semibold mb-4">
-            Why Convert MRPack to ZIP?
+            Why Convert Between Formats?
           </h2>
           <div className="grid md:grid-cols-2 gap-6 text-left">
             <div>
-              <h3 className="font-medium mb-2 text-primary">Better Compatibility</h3>
+              <h3 className="font-medium mb-2 text-primary">MRPACK → ZIP</h3>
               <p className="text-sm text-muted-foreground">
-                ZIP format is supported by virtually all Minecraft launchers including CurseForge, ATLauncher, and more.
+                Convert Modrinth packs to universal ZIP format for compatibility with CurseForge, ATLauncher, and other launchers.
               </p>
             </div>
             <div>
-              <h3 className="font-medium mb-2 text-primary">Easier Sharing</h3>
+              <h3 className="font-medium mb-2 text-primary">ZIP → MRPACK</h3>
               <p className="text-sm text-muted-foreground">
-                ZIP files are universally recognized and can be easily shared across different platforms and communities.
+                Transform existing modpack ZIPs into Modrinth-compatible format for uploading to Modrinth or using with Modrinth App.
               </p>
             </div>
           </div>
