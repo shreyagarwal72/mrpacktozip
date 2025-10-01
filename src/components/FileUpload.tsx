@@ -148,62 +148,68 @@ export function FileUpload() {
       
       setConversion(prev => ({ ...prev, progress: 35, currentStep: 'Processing files...' }))
       
-      // Create new MRPACK
+      // Create new MRPACK with proper structure
       const mrpackZip = new JSZip()
-      
-      // Process all files including configs, resources, and mods
       const overridesFolder = mrpackZip.folder('overrides')
       let fileCount = 0
-      
-      // Check for overrides folder in ZIP
-      const sourceOverridesFolder = zipFile.folder('overrides')
-      if (sourceOverridesFolder) {
-        for (const [path, file] of Object.entries(sourceOverridesFolder.files)) {
-          if (!file.dir && path.startsWith('overrides/')) {
-            const content = await file.async('arraybuffer')
-            const relativePath = path.replace('overrides/', '')
-            overridesFolder?.file(relativePath, content)
-            fileCount++
-          }
-        }
-      }
-      
-      setConversion(prev => ({ ...prev, progress: 55, currentStep: 'Processing mod files...' }))
-      
-      // Process mods folder specifically
-      const modsFolder = zipFile.folder('mods') || zipFile.folder('overrides/mods')
       const modFiles: string[] = []
       
-      if (modsFolder) {
-        const overrideModsFolder = overridesFolder?.folder('mods')
-        for (const [path, file] of Object.entries(modsFolder.files)) {
-          if (!file.dir && (path.endsWith('.jar') || path.endsWith('.zip'))) {
-            const fileName = path.split('/').pop() || 'unknown.jar'
-            const content = await file.async('arraybuffer')
-            overrideModsFolder?.file(fileName, content)
+      // Iterate through ALL files in the source ZIP
+      const allFiles = Object.keys(zipFile.files)
+      
+      for (let i = 0; i < allFiles.length; i++) {
+        const filePath = allFiles[i]
+        const fileObj = zipFile.files[filePath]
+        
+        // Skip directories and manifest
+        if (fileObj.dir || filePath === 'manifest.json') {
+          continue
+        }
+        
+        // Get file content
+        const content = await fileObj.async('arraybuffer')
+        
+        // Determine where to place the file
+        let targetPath = ''
+        
+        // Handle files in overrides folder
+        if (filePath.startsWith('overrides/')) {
+          targetPath = filePath.replace('overrides/', '')
+        }
+        // Handle mods folder at root
+        else if (filePath.startsWith('mods/')) {
+          targetPath = filePath
+        }
+        // Handle root-level mod files
+        else if (filePath.endsWith('.jar') && !filePath.includes('/')) {
+          targetPath = `mods/${filePath}`
+        }
+        // Handle config files at root
+        else if ((filePath.endsWith('.toml') || filePath.endsWith('.json5') || filePath.endsWith('.txt')) && !filePath.includes('/')) {
+          targetPath = filePath
+        }
+        // Handle other standard folders (config, scripts, resources, etc.)
+        else if (filePath.startsWith('config/') || filePath.startsWith('scripts/') || 
+                 filePath.startsWith('resources/') || filePath.startsWith('defaultconfigs/')) {
+          targetPath = filePath
+        }
+        
+        // Add file to overrides if we have a target path
+        if (targetPath) {
+          overridesFolder?.file(targetPath, content)
+          fileCount++
+          
+          // Track mod files
+          if (targetPath.includes('mods/') && (targetPath.endsWith('.jar') || targetPath.endsWith('.zip'))) {
+            const fileName = targetPath.split('/').pop() || 'unknown.jar'
             modFiles.push(fileName)
-            fileCount++
           }
         }
-      }
-      
-      // Also check for root-level files
-      for (const [path, file] of Object.entries(zipFile.files)) {
-        if (!file.dir && !path.includes('/') && path !== 'manifest.json') {
-          // If it's a mod file in root
-          if (path.endsWith('.jar') || (path.endsWith('.zip') && !path.includes('override'))) {
-            const content = await file.async('arraybuffer')
-            const overrideModsFolder = overridesFolder?.folder('mods')
-            overrideModsFolder?.file(path, content)
-            modFiles.push(path)
-            fileCount++
-          } 
-          // If it's a config or other file
-          else if (path.endsWith('.toml') || path.endsWith('.json') || path.endsWith('.txt')) {
-            const content = await file.async('arraybuffer')
-            overridesFolder?.file(path, content)
-            fileCount++
-          }
+        
+        // Update progress
+        const progress = 35 + (i / allFiles.length) * 40
+        if (i % 5 === 0) {
+          setConversion(prev => ({ ...prev, progress, currentStep: `Processing ${i}/${allFiles.length} files...` }))
         }
       }
       
