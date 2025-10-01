@@ -157,18 +157,26 @@ export function FileUpload() {
       
       // Iterate through ALL files in the source ZIP
       const allFiles = Object.keys(zipFile.files)
+      console.log(`Found ${allFiles.length} total entries in ZIP (including directories)`)
       
       for (let i = 0; i < allFiles.length; i++) {
         const filePath = allFiles[i]
         const fileObj = zipFile.files[filePath]
         
         // Skip directories and manifest
-        if (fileObj.dir || filePath === 'manifest.json') {
+        if (fileObj.dir) {
+          console.log(`Skipping directory: ${filePath}`)
+          continue
+        }
+        
+        if (filePath === 'manifest.json') {
+          console.log('Skipping manifest.json (already processed)')
           continue
         }
         
         // Get file content
         const content = await fileObj.async('arraybuffer')
+        console.log(`Processing file: ${filePath} (${content.byteLength} bytes)`)
         
         // Determine where to place the file
         let targetPath = ''
@@ -186,12 +194,19 @@ export function FileUpload() {
           targetPath = `mods/${filePath}`
         }
         // Handle config files at root
-        else if ((filePath.endsWith('.toml') || filePath.endsWith('.json5') || filePath.endsWith('.txt')) && !filePath.includes('/')) {
+        else if ((filePath.endsWith('.toml') || filePath.endsWith('.json5') || filePath.endsWith('.txt') || filePath.endsWith('.json')) && !filePath.includes('/')) {
           targetPath = filePath
         }
         // Handle other standard folders (config, scripts, resources, etc.)
         else if (filePath.startsWith('config/') || filePath.startsWith('scripts/') || 
-                 filePath.startsWith('resources/') || filePath.startsWith('defaultconfigs/')) {
+                 filePath.startsWith('resources/') || filePath.startsWith('resourcepacks/') ||
+                 filePath.startsWith('defaultconfigs/') || filePath.startsWith('kubejs/') ||
+                 filePath.startsWith('shaderpacks/')) {
+          targetPath = filePath
+        }
+        // Catch-all for any other files that should be included
+        else {
+          console.log(`File not matching any pattern: ${filePath}, including it anyway`)
           targetPath = filePath
         }
         
@@ -199,6 +214,7 @@ export function FileUpload() {
         if (targetPath) {
           overridesFolder?.file(targetPath, content)
           fileCount++
+          console.log(`Added to MRPACK: overrides/${targetPath}`)
           
           // Track mod files
           if (targetPath.includes('mods/') && (targetPath.endsWith('.jar') || targetPath.endsWith('.zip'))) {
@@ -213,6 +229,8 @@ export function FileUpload() {
           setConversion(prev => ({ ...prev, progress, currentStep: `Processing ${i}/${allFiles.length} files...` }))
         }
       }
+      
+      console.log(`Total files added to MRPACK: ${fileCount}, Mods: ${modFiles.length}`)
       
       setConversion(prev => ({ ...prev, progress: 75, currentStep: 'Creating information file...' }))
       
@@ -229,15 +247,20 @@ export function FileUpload() {
       
       setConversion(prev => ({ ...prev, progress: 95, currentStep: 'Generating MRPACK file...' }))
       
-      // Generate the MRPACK file
+      console.log('Generating MRPACK archive...')
+      // Generate the MRPACK file - use STORE for already-compressed files like JARs
       const mrpackBlob = await mrpackZip.generateAsync({ 
         type: "blob",
         compression: "DEFLATE",
-        compressionOptions: { level: 6 }
+        compressionOptions: { level: 9 }
       })
+      
+      console.log(`MRPACK generated: ${mrpackBlob.size} bytes`)
       
       const downloadUrl = URL.createObjectURL(mrpackBlob)
       const fileName = file.name.replace('.zip', '.mrpack')
+      
+      console.log(`Ready to download: ${fileName}`)
       
       setConversion({ 
         status: 'success', 
@@ -249,7 +272,7 @@ export function FileUpload() {
       
       toast({
         title: "Conversion successful!",
-        description: `${fileName} created with ${fileCount} files including ${modFiles.length} mods.`,
+        description: `${fileName} created with ${fileCount} files including ${modFiles.length} mods (${(mrpackBlob.size / 1024 / 1024).toFixed(2)} MB).`,
       })
       
     } catch (error) {
