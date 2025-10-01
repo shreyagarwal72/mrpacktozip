@@ -87,6 +87,7 @@ export function FileUpload() {
 
   const convertZipToMrpack = async (file: File) => {
     try {
+      console.log('Starting ZIP to MRPACK conversion for:', file.name)
       setConversion({ status: 'converting', progress: 5, currentStep: 'Reading ZIP file...' })
       
       // Read the ZIP file
@@ -252,16 +253,19 @@ export function FileUpload() {
       })
       
     } catch (error) {
-      console.error('Conversion error:', error)
+      console.error('ZIP to MRPACK conversion error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to convert file. Please ensure it\'s a valid modpack ZIP file.'
+      console.error('Error details:', errorMessage)
+      
       setConversion({ 
         status: 'error', 
         progress: 0, 
-        error: error instanceof Error ? error.message : 'Failed to convert file. Please ensure it\'s a valid modpack ZIP file.'
+        error: errorMessage
       })
       
       toast({
         title: "Conversion failed",
-        description: error instanceof Error ? error.message : "Please ensure you've uploaded a valid modpack ZIP file.",
+        description: errorMessage,
         variant: "destructive",
       })
     }
@@ -459,9 +463,13 @@ export function FileUpload() {
   }
 
   const handleFiles = useCallback((files: FileList | null) => {
-    if (!files || files.length === 0) return
+    if (!files || files.length === 0) {
+      console.log('No files selected')
+      return
+    }
     
     const file = files[0]
+    console.log('File selected:', file.name, 'Type:', file.type, 'Size:', file.size)
     
     if (mode === 'mrpack-to-zip') {
       if (!file.name.endsWith('.mrpack')) {
@@ -484,7 +492,7 @@ export function FileUpload() {
       }
       convertZipToMrpack(file)
     }
-  }, [toast, mode])
+  }, [mode, toast, convertMrpackToZip, convertZipToMrpack])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -497,6 +505,8 @@ export function FileUpload() {
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault()
     handleFiles(e.target.files)
+    // Reset input so same file can be selected again
+    e.target.value = ''
   }, [handleFiles])
 
   const handleDownload = () => {
