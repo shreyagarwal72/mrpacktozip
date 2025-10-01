@@ -151,65 +151,68 @@ export function FileUpload() {
       // Create new MRPACK
       const mrpackZip = new JSZip()
       
-      // Process override files (configs, resources, etc.)
-      const overridesFolder = zipFile.folder('overrides')
-      let overrideCount = 0
+      // Process all files including configs, resources, and mods
+      const overridesFolder = mrpackZip.folder('overrides')
+      let fileCount = 0
       
-      if (overridesFolder) {
-        const overridesOutput = mrpackZip.folder('overrides')
-        for (const [path, file] of Object.entries(overridesFolder.files)) {
-          if (!file.dir && !path.includes('/mods/')) {
+      // Check for overrides folder in ZIP
+      const sourceOverridesFolder = zipFile.folder('overrides')
+      if (sourceOverridesFolder) {
+        for (const [path, file] of Object.entries(sourceOverridesFolder.files)) {
+          if (!file.dir && path.startsWith('overrides/')) {
             const content = await file.async('arraybuffer')
             const relativePath = path.replace('overrides/', '')
-            overridesOutput?.file(relativePath, content)
-            overrideCount++
+            overridesFolder?.file(relativePath, content)
+            fileCount++
           }
         }
       }
       
-      // Also check for root-level config files and resources
-      for (const [path, file] of Object.entries(zipFile.files)) {
-        if (!file.dir && 
-            !path.includes('mods/') && 
-            !path.endsWith('.jar') && 
-            !path.endsWith('.zip') &&
-            path !== 'manifest.json' &&
-            (path.includes('config/') || path.includes('scripts/') || path.includes('resources/') || 
-             path.endsWith('.toml') || path.endsWith('.json') || path.endsWith('.txt'))) {
-          const content = await file.async('arraybuffer')
-          const overridesOutput = mrpackZip.folder('overrides')
-          overridesOutput?.file(path, content)
-          overrideCount++
-        }
-      }
+      setConversion(prev => ({ ...prev, progress: 55, currentStep: 'Processing mod files...' }))
       
-      setConversion(prev => ({ ...prev, progress: 75, currentStep: 'Creating note about mod files...' }))
-      
-      // Count mod files and create a note
-      const modFiles: string[] = []
+      // Process mods folder specifically
       const modsFolder = zipFile.folder('mods') || zipFile.folder('overrides/mods')
+      const modFiles: string[] = []
       
       if (modsFolder) {
+        const overrideModsFolder = overridesFolder?.folder('mods')
         for (const [path, file] of Object.entries(modsFolder.files)) {
           if (!file.dir && (path.endsWith('.jar') || path.endsWith('.zip'))) {
             const fileName = path.split('/').pop() || 'unknown.jar'
+            const content = await file.async('arraybuffer')
+            overrideModsFolder?.file(fileName, content)
             modFiles.push(fileName)
+            fileCount++
           }
         }
       }
       
-      // Also check for mods in root directory
+      // Also check for root-level files
       for (const [path, file] of Object.entries(zipFile.files)) {
-        if (!file.dir && (path.endsWith('.jar') || path.endsWith('.zip')) && !path.includes('/')) {
-          modFiles.push(path)
+        if (!file.dir && !path.includes('/') && path !== 'manifest.json') {
+          // If it's a mod file in root
+          if (path.endsWith('.jar') || (path.endsWith('.zip') && !path.includes('override'))) {
+            const content = await file.async('arraybuffer')
+            const overrideModsFolder = overridesFolder?.folder('mods')
+            overrideModsFolder?.file(path, content)
+            modFiles.push(path)
+            fileCount++
+          } 
+          // If it's a config or other file
+          else if (path.endsWith('.toml') || path.endsWith('.json') || path.endsWith('.txt')) {
+            const content = await file.async('arraybuffer')
+            overridesFolder?.file(path, content)
+            fileCount++
+          }
         }
       }
       
-      // Create a note file about the mods
+      setConversion(prev => ({ ...prev, progress: 75, currentStep: 'Creating information file...' }))
+      
+      // Create a helpful README file
       if (modFiles.length > 0) {
-        const modListNote = `# Mod Files Found in ZIP\n\nThis modpack contained ${modFiles.length} mod files:\n\n${modFiles.map(mod => `- ${mod}`).join('\n')}\n\n**Important Note:**\nMRPACK files are designed to reference mods from external sources (like Modrinth or CurseForge) rather than embedding them directly. To create a proper MRPACK for upload to Modrinth, you would need to:\n\n1. Find each mod on Modrinth or CurseForge\n2. Add the download URLs to the modrinth.index.json file\n3. Include proper file hashes for verification\n\nThis conversion includes only the override files (configs, scripts, resources) from your ZIP file.`
-        
-        mrpackZip.file('MODS_README.md', modListNote)
+        const readmeContent = `# ${packName} - MRPACK Conversion\n\nThis MRPACK was converted from a ZIP file.\n\n## Contents\n- **Mods**: ${modFiles.length} mod files included in overrides/mods\n- **Total files**: ${fileCount} files\n- **Minecraft Version**: ${minecraftVersion}\n- **Mod Loader**: ${loaderType} ${loaderVersion}\n\n## Mod List\n${modFiles.map(mod => `- ${mod}`).join('\n')}\n\n## Note\nAll mods are included locally in the overrides/mods folder. This MRPACK is ready to use with Modrinth App or any MRPACK-compatible launcher.`
+        mrpackZip.file('README.md', readmeContent)
       }
       
       setConversion(prev => ({ ...prev, progress: 90, currentStep: 'Finalizing MRPACK...' }))
@@ -239,7 +242,7 @@ export function FileUpload() {
       
       toast({
         title: "Conversion successful!",
-        description: `${fileName} created with ${overrideCount} override files. See MODS_README.md for mod information.`,
+        description: `${fileName} created with ${fileCount} files including ${modFiles.length} mods.`,
       })
       
     } catch (error) {

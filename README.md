@@ -13,10 +13,12 @@ Convert between Modrinth (.mrpack) and ZIP formats effortlessly with our free, f
 
 ### ZIP to MRPACK Conversion
 - Transform modpack ZIP files into Modrinth-compatible format
-- Extracts and preserves configuration files
+- Automatically extracts and includes all mod files
+- Preserves configuration files, scripts, and resources
 - Creates proper modrinth.index.json structure
 - Supports multiple mod loaders (Fabric, Forge, Quilt, NeoForge)
-- Provides detailed mod file documentation
+- Auto-detects Minecraft version and mod loader from manifest
+- Generates ready-to-use MRPACK files
 
 ## 🛠️ How It Works
 
@@ -29,11 +31,12 @@ Convert between Modrinth (.mrpack) and ZIP formats effortlessly with our free, f
 
 ### Converting ZIP to MRPACK
 1. Upload your modpack ZIP file
-2. Tool analyzes the structure and manifest
-3. Extracts override files (configs, scripts, resources)
+2. Tool analyzes the structure and manifest.json
+3. Extracts all files (mods, configs, scripts, resources)
 4. Creates proper MRPACK structure with modrinth.index.json
-5. Generates documentation for mod files
-6. Download your MRPACK file
+5. Includes all mod files in overrides/mods folder
+6. Generates README with pack information
+7. Download your fully functional MRPACK file
 
 ## 🔒 Privacy & Security
 
