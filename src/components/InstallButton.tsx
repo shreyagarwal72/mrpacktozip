@@ -48,7 +48,7 @@ export const InstallButton = () => {
       onClick={handleInstallClick}
       variant="outline"
       size="sm"
-      className="gap-2 bg-background/80 backdrop-blur-sm border-primary/20 hover:bg-primary/10 hover:border-primary/40 transition-all duration-300"
+      className="gap-2 bg-background/50 backdrop-blur-xl border-border/30 hover:bg-background/80 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300"
     >
       <Download className="h-4 w-4" />
       Install App

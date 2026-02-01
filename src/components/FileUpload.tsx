@@ -85,7 +85,7 @@ export function FileUpload() {
     throw new Error('Download failed')
   }
 
-  const convertZipToMrpack = async (file: File) => {
+  const convertZipToMrpack = useCallback(async (file: File) => {
     try {
       console.log('Starting ZIP to MRPACK conversion for:', file.name)
       setConversion({ status: 'converting', progress: 5, currentStep: 'Reading ZIP file...' })
@@ -292,9 +292,9 @@ export function FileUpload() {
         variant: "destructive",
       })
     }
-  }
+  }, [toast])
 
-  const convertMrpackToZip = async (file: File) => {
+  const convertMrpackToZip = useCallback(async (file: File) => {
     try {
       setConversion({ status: 'converting', progress: 5, currentStep: 'Reading modpack...' })
       
@@ -322,7 +322,7 @@ export function FileUpload() {
       const modpackInfo = {
         minecraft: {
           version: modrinthIndex.dependencies.minecraft || '1.20.1',
-          modLoaders: []
+          modLoaders: [] as { id: string; primary: boolean }[]
         },
         manifestType: 'minecraftModpack',
         manifestVersion: 1,
@@ -365,7 +365,6 @@ export function FileUpload() {
       
       // Copy override files
       const overridesFolder = newZip.folder('overrides')
-      const clientOverridesFolder = newZip.folder('overrides')
       
       // Copy regular overrides
       const overridesDir = mrpackZip.folder('overrides')
@@ -483,7 +482,7 @@ export function FileUpload() {
         variant: "destructive",
       })
     }
-  }
+  }, [toast])
 
   const handleFiles = useCallback((files: FileList | null) => {
     if (!files || files.length === 0) {
@@ -562,13 +561,25 @@ export function FileUpload() {
         </TabsList>
         
         <TabsContent value={mode} className="mt-6">
-          <Card className="relative overflow-hidden border-2 border-dashed transition-all duration-300 hover:shadow-lg bg-card/50 backdrop-blur-sm" 
-                style={{ 
-                  borderColor: dragActive ? 'hsl(var(--primary))' : 'hsl(var(--border))',
-                  background: dragActive ? 'var(--gradient-accent)' : undefined
-                }}>
+          <Card 
+            className={`relative overflow-hidden border-2 border-dashed transition-all duration-500 bg-card/30 backdrop-blur-2xl ${
+              dragActive 
+                ? 'border-primary shadow-lg shadow-primary/20 scale-[1.02]' 
+                : 'border-border/30 hover:border-primary/30 hover:shadow-xl'
+            }`}
+          >
+            {/* Animated gradient border overlay */}
+            <div 
+              className={`absolute inset-0 pointer-events-none transition-opacity duration-500 ${
+                dragActive ? 'opacity-100' : 'opacity-0'
+              }`}
+              style={{ 
+                background: 'var(--gradient-accent)',
+              }}
+            />
+            
             <div
-              className={`p-12 text-center transition-all duration-300 ${
+              className={`relative p-12 text-center transition-all duration-500 ${
                 dragActive ? 'scale-105' : ''
               }`}
               onDragEnter={handleDrag}
@@ -586,10 +597,12 @@ export function FileUpload() {
               />
           
               {conversion.status === 'idle' && (
-                <>
+                <div className="animate-fade-in-scale">
                   <div className="mb-6 flex justify-center">
-                    <div className="rounded-full p-4 transition-all duration-300 hover:scale-110"
-                         style={{ background: 'var(--gradient-primary)' }}>
+                    <div 
+                      className="rounded-full p-4 transition-all duration-500 hover:scale-110 hover:shadow-lg hover:shadow-primary/30"
+                      style={{ background: 'var(--gradient-primary)' }}
+                    >
                       {mode === 'mrpack-to-zip' ? 
                         <Upload className="h-12 w-12 text-primary-foreground" /> :
                         <RefreshCw className="h-12 w-12 text-primary-foreground" />
@@ -608,7 +621,7 @@ export function FileUpload() {
                       'Drag and drop your modpack ZIP here, or click to browse'
                     }
                   </p>
-                  <Button asChild variant="outline" className="border-primary/20 hover:border-primary">
+                  <Button asChild variant="outline" className="border-primary/20 hover:border-primary hover:shadow-md">
                     <label htmlFor="file-upload" className="cursor-pointer">
                       <FileArchive className="mr-2 h-4 w-4" />
                       {mode === 'mrpack-to-zip' ? 
@@ -617,37 +630,44 @@ export function FileUpload() {
                       }
                     </label>
                   </Button>
-                </>
+                </div>
               )}
           
               {conversion.status === 'converting' && (
-                <div className="space-y-4">
+                <div className="space-y-4 animate-fade-in-scale">
                   <div className="mb-6 flex justify-center">
-                    <div className="rounded-full p-4 animate-pulse"
-                         style={{ background: 'var(--gradient-primary)' }}>
+                    <div 
+                      className="rounded-full p-4 animate-glow-pulse"
+                      style={{ background: 'var(--gradient-primary)' }}
+                    >
                       <FileArchive className="h-12 w-12 text-primary-foreground animate-bounce" />
                     </div>
                   </div>
                   <h3 className="text-xl font-semibold">Converting your modpack...</h3>
                   <div className="space-y-2">
-                    <Progress value={conversion.progress} className="w-full" />
+                    <Progress value={conversion.progress} className="w-full h-3" />
                     <p className="text-sm text-muted-foreground">{conversion.progress}% complete</p>
                     {conversion.currentStep && (
-                      <p className="text-xs text-muted-foreground">{conversion.currentStep}</p>
+                      <p className="text-xs text-muted-foreground animate-pulse">{conversion.currentStep}</p>
                     )}
                   </div>
                 </div>
               )}
           
               {conversion.status === 'success' && (
-                <div className="space-y-4">
+                <div className="space-y-4 animate-fade-in-scale">
                   <div className="mb-6 flex justify-center">
-                    <div className="rounded-full p-4"
-                         style={{ background: 'var(--gradient-primary)' }}>
+                    <div 
+                      className="rounded-full p-4 shadow-lg"
+                      style={{ 
+                        background: 'linear-gradient(135deg, hsl(142 76% 36%), hsl(142 76% 45%))',
+                        boxShadow: '0 10px 25px hsl(142 76% 36% / 0.3)'
+                      }}
+                    >
                       <CheckCircle className="h-12 w-12 text-primary-foreground" />
                     </div>
                   </div>
-                  <h3 className="text-xl font-semibold text-green-500">Conversion Complete!</h3>
+                  <h3 className="text-xl font-semibold text-success">Conversion Complete!</h3>
                   <p className="text-muted-foreground mb-4">
                     {mode === 'mrpack-to-zip' ? 
                       'Your modpack has been successfully converted to ZIP format.' :
@@ -655,7 +675,7 @@ export function FileUpload() {
                     }
                   </p>
                   <div className="flex gap-3 justify-center">
-                    <Button onClick={handleDownload} className="bg-primary hover:bg-primary/90">
+                    <Button onClick={handleDownload} className="shadow-lg shadow-primary/25">
                       <Download className="mr-2 h-4 w-4" />
                       {mode === 'mrpack-to-zip' ? 'Download ZIP' : 'Download MRPACK'}
                     </Button>
@@ -667,9 +687,9 @@ export function FileUpload() {
               )}
           
               {conversion.status === 'error' && (
-                <div className="space-y-4">
+                <div className="space-y-4 animate-fade-in-scale">
                   <div className="mb-6 flex justify-center">
-                    <div className="rounded-full p-4 bg-destructive">
+                    <div className="rounded-full p-4 bg-destructive shadow-lg shadow-destructive/30">
                       <AlertCircle className="h-12 w-12 text-destructive-foreground" />
                     </div>
                   </div>

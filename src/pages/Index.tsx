@@ -14,16 +14,29 @@ const Index = () => {
           style={{ background: 'var(--gradient-primary)' }}
         />
         <div className="absolute inset-0 bg-background/80 backdrop-blur-3xl" />
+        {/* Animated gradient orbs */}
+        <div 
+          className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl animate-float opacity-20"
+          style={{ background: 'hsl(var(--primary))' }}
+        />
+        <div 
+          className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full blur-3xl animate-float opacity-20"
+          style={{ background: 'hsl(220 70% 60%)', animationDelay: '1.5s' }}
+        />
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
+      <header className="sticky top-0 z-50 w-full border-b border-border/20 bg-background/50 backdrop-blur-2xl">
         <nav className="container mx-auto px-4 py-4 flex items-center justify-between" aria-label="Main navigation">
-          <div className="flex items-center space-x-2">
-            <div className="rounded-lg p-2" style={{ background: 'var(--gradient-primary)' }} aria-hidden="true">
+          <div className="flex items-center space-x-2 group">
+            <div 
+              className="rounded-xl p-2 transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-primary/20" 
+              style={{ background: 'var(--gradient-primary)' }} 
+              aria-hidden="true"
+            >
               <FileArchive className="h-6 w-6 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+            <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
               MRPack Converter
             </span>
           </div>
@@ -37,15 +50,15 @@ const Index = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-12">
         {/* Hero Section */}
-        <section className="text-center mb-16 space-y-6">
-          <div className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-primary/10 text-primary border border-primary/20 mb-4" aria-label="Badge">
+        <section className="text-center mb-16 space-y-6 animate-slide-up-fade">
+          <div className="inline-flex items-center px-4 py-1.5 rounded-full text-sm bg-primary/10 text-primary border border-primary/20 mb-4 backdrop-blur-md transition-all duration-300 hover:bg-primary/15 hover:border-primary/30" aria-label="Badge">
             <Zap className="w-4 h-4 mr-2" aria-hidden="true" />
             Free & Fast Conversion
           </div>
           
           <h1 className="text-4xl md:text-6xl font-bold leading-tight">
             Convert Minecraft{" "}
-            <span className="bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
               Modpacks
             </span>{" "}
             Between MRPACK and ZIP
@@ -59,36 +72,46 @@ const Index = () => {
         </section>
 
         {/* File Upload Section */}
-        <div className="mb-20">
+        <div className="mb-20 animate-slide-up-fade" style={{ animationDelay: '0.1s' }}>
           <FileUpload />
         </div>
 
         {/* Features Grid */}
         <div className="grid md:grid-cols-3 gap-8 mb-16">
-          <FeatureCard
-            icon={Zap}
-            title="Lightning Fast"
-            description="Convert your modpacks in seconds with our optimized processing engine"
-          />
-          <FeatureCard
-            icon={Shield}
-            title="Completely Secure"
-            description="All conversions happen locally in your browser - your files never leave your device"
-          />
-          <FeatureCard
-            icon={Download}
-            title="Dual Conversion"
-            description="Convert both ways: MRPACK to ZIP for universal compatibility, or ZIP to MRPACK for Modrinth"
-          />
+          <div className="animate-slide-up-fade" style={{ animationDelay: '0.2s' }}>
+            <FeatureCard
+              icon={Zap}
+              title="Lightning Fast"
+              description="Convert your modpacks in seconds with our optimized processing engine"
+            />
+          </div>
+          <div className="animate-slide-up-fade" style={{ animationDelay: '0.3s' }}>
+            <FeatureCard
+              icon={Shield}
+              title="Completely Secure"
+              description="All conversions happen locally in your browser - your files never leave your device"
+            />
+          </div>
+          <div className="animate-slide-up-fade" style={{ animationDelay: '0.4s' }}>
+            <FeatureCard
+              icon={Download}
+              title="Dual Conversion"
+              description="Convert both ways: MRPACK to ZIP for universal compatibility, or ZIP to MRPACK for Modrinth"
+            />
+          </div>
         </div>
 
         {/* Info Section */}
-        <section className="bg-card/30 backdrop-blur-sm rounded-2xl p-8 border border-border/50" aria-labelledby="conversion-info">
+        <section 
+          className="bg-card/20 backdrop-blur-2xl rounded-2xl p-8 border border-border/20 shadow-xl animate-slide-up-fade" 
+          style={{ animationDelay: '0.5s' }}
+          aria-labelledby="conversion-info"
+        >
           <h2 id="conversion-info" className="text-2xl font-semibold mb-4 text-center">
             Why Convert Between MRPACK and ZIP Formats?
           </h2>
           <div className="grid md:grid-cols-2 gap-6 text-left">
-            <article>
+            <article className="p-4 rounded-xl bg-background/30 backdrop-blur-sm border border-border/10 transition-all duration-300 hover:border-primary/20 hover:bg-background/50">
               <h3 className="font-medium mb-2 text-primary">MRPACK to ZIP Conversion</h3>
               <p className="text-sm text-muted-foreground">
                 Convert Modrinth modpacks to universal ZIP format for compatibility with CurseForge, ATLauncher, 
@@ -96,7 +119,7 @@ const Index = () => {
                 configurations, resource packs, and scripts.
               </p>
             </article>
-            <article>
+            <article className="p-4 rounded-xl bg-background/30 backdrop-blur-sm border border-border/10 transition-all duration-300 hover:border-primary/20 hover:bg-background/50">
               <h3 className="font-medium mb-2 text-primary">ZIP to MRPACK Conversion</h3>
               <p className="text-sm text-muted-foreground">
                 Transform existing modpack ZIP files into Modrinth-compatible .mrpack format. Perfect for uploading 
@@ -108,33 +131,33 @@ const Index = () => {
         </section>
 
         {/* SEO FAQ Section */}
-        <section className="mt-16 space-y-8" aria-labelledby="faq-heading">
+        <section className="mt-16 space-y-8 animate-slide-up-fade" style={{ animationDelay: '0.6s' }} aria-labelledby="faq-heading">
           <h2 id="faq-heading" className="text-3xl font-bold text-center">
             Frequently Asked Questions
           </h2>
           <div className="grid md:grid-cols-2 gap-6">
-            <article className="space-y-2">
+            <article className="space-y-2 p-4 rounded-xl bg-card/20 backdrop-blur-xl border border-border/20 transition-all duration-300 hover:border-primary/20 hover:shadow-lg">
               <h3 className="font-semibold text-lg">What is an MRPACK file?</h3>
               <p className="text-sm text-muted-foreground">
                 MRPACK is Modrinth's modpack format (.mrpack extension) that contains a manifest file and 
                 download links for mods. It's optimized for smaller file sizes and platform integration.
               </p>
             </article>
-            <article className="space-y-2">
+            <article className="space-y-2 p-4 rounded-xl bg-card/20 backdrop-blur-xl border border-border/20 transition-all duration-300 hover:border-primary/20 hover:shadow-lg">
               <h3 className="font-semibold text-lg">How do I convert MRPACK to ZIP?</h3>
               <p className="text-sm text-muted-foreground">
                 Simply drag and drop your .mrpack file into the converter, select "MRPACK to ZIP" mode, 
                 and click convert. The tool downloads all mods and packages them into a universal ZIP format.
               </p>
             </article>
-            <article className="space-y-2">
+            <article className="space-y-2 p-4 rounded-xl bg-card/20 backdrop-blur-xl border border-border/20 transition-all duration-300 hover:border-primary/20 hover:shadow-lg">
               <h3 className="font-semibold text-lg">Is the converter free to use?</h3>
               <p className="text-sm text-muted-foreground">
                 Yes! Our MRPACK converter is completely free with no registration required. All processing 
                 happens in your browser for maximum privacy and security.
               </p>
             </article>
-            <article className="space-y-2">
+            <article className="space-y-2 p-4 rounded-xl bg-card/20 backdrop-blur-xl border border-border/20 transition-all duration-300 hover:border-primary/20 hover:shadow-lg">
               <h3 className="font-semibold text-lg">What mod loaders are supported?</h3>
               <p className="text-sm text-muted-foreground">
                 The converter supports Fabric, Forge, Quilt, and NeoForge mod loaders. It automatically 
@@ -146,7 +169,7 @@ const Index = () => {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border/40 bg-background/50 backdrop-blur-md py-8 mt-16">
+      <footer className="border-t border-border/20 bg-background/30 backdrop-blur-2xl py-8 mt-16">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-3 gap-8 mb-6">
             <div>
@@ -175,7 +198,7 @@ const Index = () => {
               </ul>
             </div>
           </div>
-          <div className="text-center pt-6 border-t border-border/40">
+          <div className="text-center pt-6 border-t border-border/20">
             <p className="text-sm text-muted-foreground">
               Built with 💜 for the Minecraft modding community
             </p>
