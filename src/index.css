@@ -41,8 +41,14 @@ All colors MUST be HSL.
     --gradient-secondary: linear-gradient(135deg, hsl(240 3.7% 15.9%), hsl(240 5% 20%));
     --gradient-accent: linear-gradient(135deg, hsl(263 70% 50% / 0.1), hsl(220 70% 60% / 0.1));
     
+    /* Liquid Glass tokens */
+    --glass-bg: 0 0% 100% / 0.05;
+    --glass-border: 0 0% 100% / 0.1;
+    --glass-highlight: 0 0% 100% / 0.15;
+    
     --shadow-glow: 0 0 40px hsl(263 70% 50% / 0.3);
     --shadow-soft: 0 10px 25px -5px hsl(0 0% 0% / 0.1), 0 4px 6px -2px hsl(0 0% 0% / 0.05);
+    --shadow-glass: 0 8px 32px hsl(0 0% 0% / 0.3), inset 0 1px 0 hsl(var(--glass-highlight));
     
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
@@ -50,19 +56,12 @@ All colors MUST be HSL.
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
@@ -100,8 +99,15 @@ All colors MUST be HSL.
     --gradient-secondary: linear-gradient(135deg, hsl(240 4.8% 95.9%), hsl(0 0% 100%));
     --gradient-accent: linear-gradient(135deg, hsl(263 70% 50% / 0.05), hsl(220 70% 60% / 0.05));
     
+    /* Liquid Glass tokens for light mode */
+    --glass-bg: 0 0% 100% / 0.7;
+    --glass-border: 0 0% 100% / 0.5;
+    --glass-highlight: 0 0% 100% / 0.8;
+    
     --shadow-glow: 0 0 40px hsl(263 70% 50% / 0.2);
     --shadow-soft: 0 10px 25px -5px hsl(0 0% 0% / 0.1), 0 4px 6px -2px hsl(0 0% 0% / 0.05);
+    --shadow-glass: 0 8px 32px hsl(0 0% 0% / 0.1), inset 0 1px 0 hsl(var(--glass-highlight));
+    
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -120,5 +126,98 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Liquid Glass utility classes */
+@layer components {
+  .glass-card {
+    @apply relative backdrop-blur-xl border border-border/30;
+    background: hsl(var(--glass-bg));
+    box-shadow: var(--shadow-glass);
+  }
+
+  .glass-button {
+    @apply backdrop-blur-md transition-all duration-300;
+    background: hsl(var(--glass-bg));
+  }
+
+  .glass-button:hover {
+    box-shadow: var(--shadow-glow);
+  }
+}
+
+/* Animation keyframes */
+@layer utilities {
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% {
+      opacity: 0.5;
+      box-shadow: 0 0 20px hsl(263 70% 50% / 0.3);
+    }
+    50% {
+      opacity: 1;
+      box-shadow: 0 0 40px hsl(263 70% 50% / 0.5);
+    }
+  }
+
+  @keyframes slide-up-fade {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade-in-scale {
+    0% {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .animate-shimmer {
+    animation: shimmer 8s linear infinite;
+    background-size: 200% 100%;
+  }
+
+  .animate-glow-pulse {
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+
+  .animate-slide-up-fade {
+    animation: slide-up-fade 0.5s ease-out forwards;
+  }
+
+  .animate-fade-in-scale {
+    animation: fade-in-scale 0.3s ease-out forwards;
   }
 }
