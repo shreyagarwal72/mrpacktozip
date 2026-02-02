@@ -155,12 +155,18 @@ export function FileUpload() {
       let fileCount = 0
       const modFiles: string[] = []
       
-      // Iterate through ALL files in the source ZIP
-      const allFiles = Object.keys(zipFile.files)
-      console.log(`Found ${allFiles.length} total entries in ZIP (including directories)`)
+      // Use forEach to properly iterate through source ZIP files
+      const filePromises: Promise<void>[] = []
+      const filePaths: string[] = []
       
-      for (let i = 0; i < allFiles.length; i++) {
-        const filePath = allFiles[i]
+      zipFile.forEach((relativePath, file) => {
+        filePaths.push(relativePath)
+      })
+      
+      console.log(`Found ${filePaths.length} total entries in ZIP`)
+      
+      for (let i = 0; i < filePaths.length; i++) {
+        const filePath = filePaths[i]
         const fileObj = zipFile.files[filePath]
         
         // Skip directories and manifest
@@ -174,9 +180,15 @@ export function FileUpload() {
           continue
         }
         
-        // Get file content
-        const content = await fileObj.async('arraybuffer')
-        console.log(`Processing file: ${filePath} (${content.byteLength} bytes)`)
+        // Get file content - this is the critical part, we must await each file
+        let content: ArrayBuffer
+        try {
+          content = await fileObj.async('arraybuffer')
+          console.log(`Processing file: ${filePath} (${content.byteLength} bytes)`)
+        } catch (err) {
+          console.error(`Failed to read file ${filePath}:`, err)
+          continue
+        }
         
         // Determine where to place the file
         let targetPath = ''
@@ -201,17 +213,17 @@ export function FileUpload() {
         else if (filePath.startsWith('config/') || filePath.startsWith('scripts/') || 
                  filePath.startsWith('resources/') || filePath.startsWith('resourcepacks/') ||
                  filePath.startsWith('defaultconfigs/') || filePath.startsWith('kubejs/') ||
-                 filePath.startsWith('shaderpacks/')) {
+                 filePath.startsWith('shaderpacks/') || filePath.startsWith('datapacks/')) {
           targetPath = filePath
         }
         // Catch-all for any other files that should be included
         else {
-          console.log(`File not matching any pattern: ${filePath}, including it anyway`)
+          console.log(`Including file: ${filePath}`)
           targetPath = filePath
         }
         
         // Add file to overrides if we have a target path
-        if (targetPath) {
+        if (targetPath && content.byteLength > 0) {
           overridesFolder?.file(targetPath, content)
           fileCount++
           console.log(`Added to MRPACK: overrides/${targetPath}`)
@@ -224,9 +236,9 @@ export function FileUpload() {
         }
         
         // Update progress
-        const progress = 35 + (i / allFiles.length) * 40
+        const progress = 35 + (i / filePaths.length) * 40
         if (i % 5 === 0) {
-          setConversion(prev => ({ ...prev, progress, currentStep: `Processing ${i}/${allFiles.length} files...` }))
+          setConversion(prev => ({ ...prev, progress, currentStep: `Processing ${i + 1}/${filePaths.length} files...` }))
         }
       }
       
