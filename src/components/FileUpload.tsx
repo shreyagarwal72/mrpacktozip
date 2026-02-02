@@ -85,6 +85,48 @@ export function FileUpload() {
     throw new Error('Download failed')
   }
 
+  // Helper: Compute SHA512 hash
+  const computeSha512 = async (data: ArrayBuffer): Promise<string> => {
+    const hashBuffer = await crypto.subtle.digest('SHA-512', data)
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+  }
+
+  // Helper: Compute SHA1 hash
+  const computeSha1 = async (data: ArrayBuffer): Promise<string> => {
+    const hashBuffer = await crypto.subtle.digest('SHA-1', data)
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+  }
+
+  // Helper: Query Modrinth API for version files by hash
+  const lookupModsOnModrinth = async (hashes: string[]): Promise<Record<string, {
+    files: Array<{
+      url: string
+      filename: string
+      hashes: { sha512: string; sha1: string }
+      size: number
+    }>
+  }>> => {
+    const response = await fetch('https://api.modrinth.com/v2/version_files', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'MRPackConverter/1.0'
+      },
+      body: JSON.stringify({
+        hashes: hashes,
+        algorithm: 'sha512'
+      })
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Modrinth API error: ${response.status} ${response.statusText}`)
+    }
+    
+    return response.json()
+  }
+
   const convertZipToMrpack = useCallback(async (file: File) => {
     try {
       console.log('Starting ZIP to MRPACK conversion for:', file.name)
@@ -94,9 +136,9 @@ export function FileUpload() {
       const arrayBuffer = await file.arrayBuffer()
       const zipFile = await JSZip.loadAsync(arrayBuffer)
       
-      setConversion(prev => ({ ...prev, progress: 15, currentStep: 'Analyzing modpack structure...' }))
+      setConversion(prev => ({ ...prev, progress: 10, currentStep: 'Analyzing modpack structure...' }))
       
-      // Look for manifest.json or other modpack indicators
+      // Look for manifest.json for modpack metadata
       const manifestFile = zipFile.file('manifest.json')
       let packName = file.name.replace('.zip', '')
       let minecraftVersion = '1.20.1'
@@ -131,7 +173,138 @@ export function FileUpload() {
         }
       }
       
-      setConversion(prev => ({ ...prev, progress: 25, currentStep: 'Creating Modrinth index...' }))
+      setConversion(prev => ({ ...prev, progress: 15, currentStep: 'Collecting mod files...' }))
+      
+      // Collect all mod JAR files and compute hashes
+      const modFiles: Array<{
+        filename: string
+        content: ArrayBuffer
+        sha512: string
+        sha1: string
+        originalPath: string
+      }> = []
+      
+      const nonModFiles: Array<{
+        path: string
+        content: ArrayBuffer
+      }> = []
+      
+      const filePaths: string[] = []
+      zipFile.forEach((relativePath) => {
+        filePaths.push(relativePath)
+      })
+      
+      console.log(`Found ${filePaths.length} total entries in ZIP`)
+      
+      let processedCount = 0
+      for (const filePath of filePaths) {
+        const fileObj = zipFile.files[filePath]
+        
+        if (fileObj.dir) continue
+        if (filePath === 'manifest.json') continue
+        
+        const content = await fileObj.async('arraybuffer')
+        if (content.byteLength === 0) continue
+        
+        // Determine if this is a mod file
+        const isModFile = (
+          (filePath.startsWith('mods/') || filePath.startsWith('overrides/mods/')) && 
+          (filePath.endsWith('.jar') || filePath.endsWith('.zip'))
+        )
+        
+        if (isModFile) {
+          setConversion(prev => ({ 
+            ...prev, 
+            progress: 15 + (processedCount / filePaths.length) * 25,
+            currentStep: `Hashing mod: ${filePath.split('/').pop()}...`
+          }))
+          
+          const sha512 = await computeSha512(content)
+          const sha1 = await computeSha1(content)
+          const filename = filePath.split('/').pop() || 'unknown.jar'
+          
+          modFiles.push({
+            filename,
+            content,
+            sha512,
+            sha1,
+            originalPath: filePath
+          })
+          console.log(`Hashed mod: ${filename} -> sha512: ${sha512.substring(0, 16)}...`)
+        } else {
+          // Non-mod file - goes to overrides
+          let targetPath = filePath
+          if (filePath.startsWith('overrides/')) {
+            targetPath = filePath.replace('overrides/', '')
+          }
+          
+          nonModFiles.push({
+            path: targetPath,
+            content
+          })
+        }
+        
+        processedCount++
+      }
+      
+      console.log(`Found ${modFiles.length} mod files and ${nonModFiles.length} non-mod files`)
+      
+      if (modFiles.length === 0) {
+        throw new Error('No mod files found in the ZIP. Make sure your modpack contains JAR files in a mods/ folder.')
+      }
+      
+      setConversion(prev => ({ ...prev, progress: 45, currentStep: 'Looking up mods on Modrinth...' }))
+      
+      // Query Modrinth API with all hashes
+      const hashes = modFiles.map(m => m.sha512)
+      console.log(`Querying Modrinth API with ${hashes.length} hashes...`)
+      
+      const modrinthResponse = await lookupModsOnModrinth(hashes)
+      console.log('Modrinth API response:', Object.keys(modrinthResponse).length, 'matches found')
+      
+      setConversion(prev => ({ ...prev, progress: 55, currentStep: 'Checking mod availability...' }))
+      
+      // Check which mods were found
+      const matchedMods: ModrinthFile[] = []
+      const unmatchedMods: string[] = []
+      
+      for (const mod of modFiles) {
+        const modrinthVersion = modrinthResponse[mod.sha512]
+        
+        if (modrinthVersion && modrinthVersion.files && modrinthVersion.files.length > 0) {
+          // Find the file that matches our hash
+          const matchedFile = modrinthVersion.files.find(f => f.hashes.sha512 === mod.sha512)
+          
+          if (matchedFile) {
+            matchedMods.push({
+              path: `mods/${matchedFile.filename}`,
+              hashes: {
+                sha1: matchedFile.hashes.sha1,
+                sha512: matchedFile.hashes.sha512
+              },
+              downloads: [matchedFile.url],
+              fileSize: matchedFile.size
+            })
+            console.log(`✓ Matched: ${mod.filename} -> ${matchedFile.url}`)
+          } else {
+            unmatchedMods.push(mod.filename)
+            console.log(`✗ No matching file in version: ${mod.filename}`)
+          }
+        } else {
+          unmatchedMods.push(mod.filename)
+          console.log(`✗ Not found on Modrinth: ${mod.filename}`)
+        }
+      }
+      
+      // Fail if any mods are not found on Modrinth
+      if (unmatchedMods.length > 0) {
+        const errorMsg = `Conversion failed: The following ${unmatchedMods.length} mod(s) are not available on Modrinth:\n\n` +
+          unmatchedMods.map(m => `• ${m}`).join('\n') +
+          '\n\nThese mods may be CurseForge-exclusive or custom mods. Only mods published on Modrinth can be included in MRPACK format.'
+        throw new Error(errorMsg)
+      }
+      
+      setConversion(prev => ({ ...prev, progress: 70, currentStep: 'Building Modrinth index...' }))
       
       // Create the modrinth.index.json structure
       const modrinthIndex: ModrinthIndex = {
@@ -140,139 +313,42 @@ export function FileUpload() {
         versionId: '1.0.0',
         name: packName,
         summary: `Converted from ZIP: ${packName}`,
-        files: [],
+        files: matchedMods,
         dependencies: {
           minecraft: minecraftVersion,
           [loaderType === 'fabric' ? 'fabric-loader' : loaderType]: loaderVersion
         }
       }
       
-      setConversion(prev => ({ ...prev, progress: 35, currentStep: 'Processing files...' }))
+      setConversion(prev => ({ ...prev, progress: 80, currentStep: 'Creating MRPACK structure...' }))
       
-      // Create new MRPACK with proper structure
+      // Create new MRPACK
       const mrpackZip = new JSZip()
-      const overridesFolder = mrpackZip.folder('overrides')
-      let fileCount = 0
-      const modFiles: string[] = []
       
-      // Use forEach to properly iterate through source ZIP files
-      const filePromises: Promise<void>[] = []
-      const filePaths: string[] = []
-      
-      zipFile.forEach((relativePath, file) => {
-        filePaths.push(relativePath)
-      })
-      
-      console.log(`Found ${filePaths.length} total entries in ZIP`)
-      
-      for (let i = 0; i < filePaths.length; i++) {
-        const filePath = filePaths[i]
-        const fileObj = zipFile.files[filePath]
-        
-        // Skip directories and manifest
-        if (fileObj.dir) {
-          console.log(`Skipping directory: ${filePath}`)
-          continue
-        }
-        
-        if (filePath === 'manifest.json') {
-          console.log('Skipping manifest.json (already processed)')
-          continue
-        }
-        
-        // Get file content - this is the critical part, we must await each file
-        let content: ArrayBuffer
-        try {
-          content = await fileObj.async('arraybuffer')
-          console.log(`Processing file: ${filePath} (${content.byteLength} bytes)`)
-        } catch (err) {
-          console.error(`Failed to read file ${filePath}:`, err)
-          continue
-        }
-        
-        // Determine where to place the file
-        let targetPath = ''
-        
-        // Handle files in overrides folder
-        if (filePath.startsWith('overrides/')) {
-          targetPath = filePath.replace('overrides/', '')
-        }
-        // Handle mods folder at root
-        else if (filePath.startsWith('mods/')) {
-          targetPath = filePath
-        }
-        // Handle root-level mod files
-        else if (filePath.endsWith('.jar') && !filePath.includes('/')) {
-          targetPath = `mods/${filePath}`
-        }
-        // Handle config files at root
-        else if ((filePath.endsWith('.toml') || filePath.endsWith('.json5') || filePath.endsWith('.txt') || filePath.endsWith('.json')) && !filePath.includes('/')) {
-          targetPath = filePath
-        }
-        // Handle other standard folders (config, scripts, resources, etc.)
-        else if (filePath.startsWith('config/') || filePath.startsWith('scripts/') || 
-                 filePath.startsWith('resources/') || filePath.startsWith('resourcepacks/') ||
-                 filePath.startsWith('defaultconfigs/') || filePath.startsWith('kubejs/') ||
-                 filePath.startsWith('shaderpacks/') || filePath.startsWith('datapacks/')) {
-          targetPath = filePath
-        }
-        // Catch-all for any other files that should be included
-        else {
-          console.log(`Including file: ${filePath}`)
-          targetPath = filePath
-        }
-        
-        // Add file to overrides if we have a target path
-        if (targetPath && content.byteLength > 0) {
-          overridesFolder?.file(targetPath, content)
-          fileCount++
-          console.log(`Added to MRPACK: overrides/${targetPath}`)
-          
-          // Track mod files
-          if (targetPath.includes('mods/') && (targetPath.endsWith('.jar') || targetPath.endsWith('.zip'))) {
-            const fileName = targetPath.split('/').pop() || 'unknown.jar'
-            modFiles.push(fileName)
-          }
-        }
-        
-        // Update progress
-        const progress = 35 + (i / filePaths.length) * 40
-        if (i % 5 === 0) {
-          setConversion(prev => ({ ...prev, progress, currentStep: `Processing ${i + 1}/${filePaths.length} files...` }))
-        }
-      }
-      
-      console.log(`Total files added to MRPACK: ${fileCount}, Mods: ${modFiles.length}`)
-      
-      setConversion(prev => ({ ...prev, progress: 75, currentStep: 'Creating information file...' }))
-      
-      // Create a helpful README file
-      if (modFiles.length > 0) {
-        const readmeContent = `# ${packName} - MRPACK Conversion\n\nThis MRPACK was converted from a ZIP file.\n\n## Contents\n- **Mods**: ${modFiles.length} mod files included in overrides/mods\n- **Total files**: ${fileCount} files\n- **Minecraft Version**: ${minecraftVersion}\n- **Mod Loader**: ${loaderType} ${loaderVersion}\n\n## Mod List\n${modFiles.map(mod => `- ${mod}`).join('\n')}\n\n## Note\nAll mods are included locally in the overrides/mods folder. This MRPACK is ready to use with Modrinth App or any MRPACK-compatible launcher.`
-        mrpackZip.file('README.md', readmeContent)
-      }
-      
-      setConversion(prev => ({ ...prev, progress: 90, currentStep: 'Finalizing MRPACK...' }))
-      
-      // Add the modrinth.index.json file
+      // Add modrinth.index.json at root
       mrpackZip.file('modrinth.index.json', JSON.stringify(modrinthIndex, null, 2))
       
-      setConversion(prev => ({ ...prev, progress: 95, currentStep: 'Generating MRPACK file...' }))
+      // Add non-mod files to overrides (NO mod JARs!)
+      const overridesFolder = mrpackZip.folder('overrides')
+      for (const file of nonModFiles) {
+        overridesFolder?.file(file.path, file.content)
+      }
       
-      console.log('Generating MRPACK archive...')
-      // Generate the MRPACK file - use STORE for already-compressed files like JARs
+      console.log(`Added ${nonModFiles.length} files to overrides/`)
+      
+      setConversion(prev => ({ ...prev, progress: 90, currentStep: 'Generating MRPACK file...' }))
+      
+      // Generate the MRPACK file
       const mrpackBlob = await mrpackZip.generateAsync({ 
         type: "blob",
         compression: "DEFLATE",
         compressionOptions: { level: 9 }
       })
       
-      console.log(`MRPACK generated: ${mrpackBlob.size} bytes`)
+      console.log(`MRPACK generated: ${mrpackBlob.size} bytes (${(mrpackBlob.size / 1024).toFixed(1)} KB)`)
       
       const downloadUrl = URL.createObjectURL(mrpackBlob)
       const fileName = file.name.replace('.zip', '.mrpack')
-      
-      console.log(`Ready to download: ${fileName}`)
       
       setConversion({ 
         status: 'success', 
@@ -284,13 +360,12 @@ export function FileUpload() {
       
       toast({
         title: "Conversion successful!",
-        description: `${fileName} created with ${fileCount} files including ${modFiles.length} mods (${(mrpackBlob.size / 1024 / 1024).toFixed(2)} MB).`,
+        description: `${fileName} created with ${matchedMods.length} mods referenced by URL (${(mrpackBlob.size / 1024).toFixed(1)} KB). Ready for Modrinth App!`,
       })
       
     } catch (error) {
       console.error('ZIP to MRPACK conversion error:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to convert file. Please ensure it\'s a valid modpack ZIP file.'
-      console.error('Error details:', errorMessage)
       
       setConversion({ 
         status: 'error', 
@@ -300,7 +375,7 @@ export function FileUpload() {
       
       toast({
         title: "Conversion failed",
-        description: errorMessage,
+        description: errorMessage.split('\n')[0], // First line for toast
         variant: "destructive",
       })
     }
