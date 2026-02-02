@@ -1,208 +1,158 @@
 
-# MRPack Converter: Bug Fixes and Liquid Glass Redesign
+# Fix ZIP to MRPACK Conversion - Proper Modrinth Format
 
-## Overview
-This plan addresses two main objectives:
-1. Fix remaining mechanism issues in the website
-2. Apply a fresh "liquid glass" (glassmorphism) design with blur effects and smooth transition animations
+## Problem Summary
 
----
+The current ZIP to MRPACK conversion is fundamentally broken because it:
+1. Copies all mod JAR files into `overrides/mods/` folder
+2. Creates an empty `files: []` array in `modrinth.index.json`
+3. Results in the same content as the original ZIP, just renamed
 
-## Part 1: Mechanism Fixes
+A **true MRPACK file** should:
+- Contain `modrinth.index.json` with download URLs for each mod (from Modrinth CDN)
+- Only store non-mod files (configs, scripts, resources) in `overrides/`
+- NOT include mod JARs directly - they are downloaded by the launcher using the URLs
 
-### Issue 1: useCallback Dependencies Bug
-**Location:** `src/components/FileUpload.tsx`
+## Solution Approach
 
-**Problem:** The `handleFiles` function lists `convertMrpackToZip` and `convertZipToMrpack` as dependencies, but these functions are NOT wrapped in `useCallback`. This can cause stale closures and unexpected behavior during conversions.
+### Step 1: Hash Each Mod File
+For each `.jar` file in the input ZIP's `mods/` folder:
+- Read the file as ArrayBuffer
+- Compute SHA512 hash using Web Crypto API (`crypto.subtle.digest`)
+- Store mapping: hash → filename → file content
 
-**Fix:** Wrap both conversion functions in `useCallback` with proper dependencies, or remove them from the `handleFiles` dependency array since they don't actually need to be dependencies (they use state setters which are stable).
-
-### Issue 2: Progress Indicator Animation
-**Location:** `src/components/ui/progress.tsx`
-
-**Problem:** The progress bar lacks smooth transition animations.
-
-**Fix:** Add transition animation to make progress updates smoother.
-
-### Issue 3: Tab Content Transitions
-**Location:** `src/components/ui/tabs.tsx`
-
-**Problem:** Tab switching has no animation, making the UI feel abrupt.
-
-**Fix:** Add fade/slide animations when switching between tabs.
-
----
-
-## Part 2: Liquid Glass Design Implementation
-
-### Design Concept
-Liquid glass (glassmorphism) design features:
-- Semi-transparent backgrounds with backdrop blur
-- Subtle gradient overlays
-- Soft shadows and glow effects
-- Smooth hover and transition animations
-- Floating, layered appearance
-
-### Component Updates
-
-#### 1. Global CSS Variables and Animations
-**File:** `src/index.css`
-
-Add new liquid glass design tokens:
-- Glass background colors with transparency
-- Enhanced blur variables
-- Glow shadow effects
-- New animation keyframes for float, shimmer, and pulse effects
-
-#### 2. Tailwind Configuration
-**File:** `tailwind.config.ts`
-
-Add new animations and utilities:
-- `float` - subtle floating animation
-- `shimmer` - glass shimmer effect
-- `glow-pulse` - pulsing glow effect
-- `slide-up` - entrance animation
-- `fade-in-scale` - combined fade and scale animation
-
-#### 3. Header Component Update
-**File:** `src/pages/Index.tsx`
-
-Apply liquid glass styling:
-- Enhanced backdrop blur (blur-xl to blur-2xl)
-- Semi-transparent background with gradient border
-- Smooth hover transitions on logo and buttons
-- Subtle shadow effects
-
-#### 4. Feature Cards
-**File:** `src/components/FeatureCard.tsx`
-
-Transform into liquid glass cards:
-- Semi-transparent backgrounds (bg-white/5 dark, bg-white/70 light)
-- Backdrop blur effect
-- Gradient border on hover
-- Float animation on hover
-- Glow effect on hover
-
-#### 5. File Upload Component
-**File:** `src/components/FileUpload.tsx`
-
-Enhanced liquid glass styling:
-- Glass morphism card with enhanced blur
-- Animated gradient border
-- Smooth state transition animations
-- Pulsing progress indicator
-- Glass button effects
-
-#### 6. Tabs Component
-**File:** `src/components/ui/tabs.tsx`
-
-Liquid glass tabs:
-- Semi-transparent tab list background
-- Backdrop blur on tabs
-- Animated active tab indicator
-- Smooth transition between tabs
-
-#### 7. Card Component
-**File:** `src/components/ui/card.tsx`
-
-Base liquid glass card:
-- Default backdrop blur
-- Semi-transparent background
-- Enhanced shadow and border
-
-#### 8. Button Component
-**File:** `src/components/ui/button.tsx`
-
-Glass button effects:
-- Add backdrop blur to outline variant
-- Subtle glow on hover
-- Smooth scale transition
-
-#### 9. Theme Toggle
-**File:** `src/components/ThemeToggle.tsx`
-
-Glass toggle button:
-- Semi-transparent background
-- Subtle glow on hover
-- Smooth rotation animation
-
-#### 10. Install Button
-**File:** `src/components/InstallButton.tsx`
-
-Already has some glass styling - enhance with:
-- Stronger blur effect
-- Animated gradient border on hover
-
----
-
-## Technical Details
-
-### New CSS Keyframes to Add
-
-```text
-@keyframes float
-  0%, 100%: translateY(0)
-  50%: translateY(-5px)
-
-@keyframes shimmer
-  0%: background-position 200% 0
-  100%: background-position -200% 0
-
-@keyframes glow-pulse
-  0%, 100%: opacity 0.5
-  50%: opacity 1
-
-@keyframes slide-up-fade
-  0%: opacity 0, translateY(20px)
-  100%: opacity 1, translateY(0)
+### Step 2: Query Modrinth API
+Call `POST https://api.modrinth.com/v2/version_files` with:
+```json
+{
+  "hashes": ["sha512hash1", "sha512hash2", ...],
+  "algorithm": "sha512"
+}
 ```
 
-### Glass Effect CSS Classes
+Modrinth returns a map of hash → version info including:
+- `files[].url` - CDN download URL
+- `files[].hashes.sha512` - File hash
+- `files[].filename` - Original filename
+- `files[].size` - File size in bytes
 
-```text
-.glass-card
-  - background: rgba(255,255,255,0.05) for dark mode
-  - background: rgba(255,255,255,0.7) for light mode
-  - backdrop-filter: blur(20px)
-  - border: 1px solid rgba(255,255,255,0.1)
-  - box-shadow: inset glow + outer shadow
-
-.glass-button
-  - similar properties with hover glow
-  - transition: all 0.3s ease
+### Step 3: Build modrinth.index.json
+Create the proper structure with the `files` array populated:
+```json
+{
+  "formatVersion": 1,
+  "game": "minecraft",
+  "versionId": "1.0.0",
+  "name": "Pack Name",
+  "files": [
+    {
+      "path": "mods/sodium-fabric-1.20.1.jar",
+      "hashes": {
+        "sha512": "abc123...",
+        "sha1": "def456..."
+      },
+      "downloads": ["https://cdn.modrinth.com/..."],
+      "fileSize": 123456
+    }
+  ],
+  "dependencies": {
+    "minecraft": "1.20.1",
+    "fabric-loader": "0.14.21"
+  }
+}
 ```
 
-### Tailwind Utilities to Add
+### Step 4: Handle Unmatched Mods
+Per user preference: **Fail conversion** if any mod is not found on Modrinth.
 
-| Animation | Duration | Effect |
-|-----------|----------|--------|
-| animate-float | 3s ease-in-out infinite | Subtle floating |
-| animate-shimmer | 8s linear infinite | Background shimmer |
-| animate-glow-pulse | 2s ease-in-out infinite | Pulsing glow |
-| animate-slide-up | 0.5s ease-out | Entrance animation |
+Show an error listing which mods could not be matched, so the user knows what's incompatible.
+
+### Step 5: Create MRPACK Output
+- Add `modrinth.index.json` to the root
+- Add non-mod files (configs, scripts, resources) to `overrides/`
+- Do NOT include mod JARs in the output (they're referenced by URL)
+
+---
+
+## Technical Implementation
+
+### New Helper: Compute SHA512 Hash
+```text
+async function computeSha512(data: ArrayBuffer): Promise<string> {
+  const hashBuffer = await crypto.subtle.digest('SHA-512', data)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+}
+```
+
+### New Helper: Query Modrinth Version Files API
+```text
+async function lookupModsOnModrinth(hashes: string[]): Promise<Map<hash, ModrinthVersion>> {
+  const response = await fetch('https://api.modrinth.com/v2/version_files', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'User-Agent': 'MRPackConverter/1.0'
+    },
+    body: JSON.stringify({
+      hashes: hashes,
+      algorithm: 'sha512'
+    })
+  })
+  return response.json()
+}
+```
+
+### Updated convertZipToMrpack Flow
+
+```text
+1. Read ZIP file
+2. Parse manifest.json for Minecraft version and loader info
+3. Collect all mod files from mods/ folder
+4. For each mod JAR:
+   a. Read file content
+   b. Compute SHA512 hash
+   c. Store in map: hash → { filename, content }
+5. Call Modrinth API with all hashes
+6. Check response:
+   - If any hash is missing from response → FAIL with list of unmatchable mods
+   - If all matched → continue
+7. Build modrinth.index.json with files[] array from API response
+8. Create MRPACK:
+   - Add modrinth.index.json at root
+   - Add configs, scripts, resources to overrides/
+   - Do NOT add mod JARs (they're URL-referenced)
+9. Return MRPACK blob for download
+```
 
 ---
 
 ## Files to Modify
 
-1. `src/index.css` - Add new design tokens and animations
-2. `tailwind.config.ts` - Add new animation keyframes and utilities
-3. `src/pages/Index.tsx` - Apply liquid glass to main layout
-4. `src/components/FileUpload.tsx` - Fix bugs + liquid glass styling
-5. `src/components/FeatureCard.tsx` - Liquid glass card design
-6. `src/components/ThemeToggle.tsx` - Glass button effect
-7. `src/components/ui/tabs.tsx` - Glass tabs with animations
-8. `src/components/ui/card.tsx` - Base glass card styling
-9. `src/components/ui/button.tsx` - Glass button variants
-10. `src/components/ui/progress.tsx` - Animated progress bar
+| File | Changes |
+|------|---------|
+| `src/components/FileUpload.tsx` | Complete rewrite of `convertZipToMrpack` function with hash computation, Modrinth API lookup, proper MRPACK structure |
+
+---
+
+## Error Handling
+
+When mods cannot be found on Modrinth, show a clear error:
+
+```text
+"Conversion failed: The following mods are not available on Modrinth:
+ - mod1.jar
+ - mod2.jar
+
+These mods may be CurseForge-exclusive or custom mods. 
+Only mods published on Modrinth can be included in MRPACK format."
+```
 
 ---
 
 ## Expected Outcome
 
-After implementation:
-- All conversion mechanisms work reliably without stale closure bugs
-- Website has a modern, premium liquid glass aesthetic
-- All UI elements have smooth transitions and hover effects
-- Both dark and light modes properly styled for glassmorphism
-- Performance remains smooth with CSS-only animations
+After this fix:
+- ZIP with CurseForge mods that exist on Modrinth → proper small MRPACK with download URLs
+- ZIP with CurseForge-exclusive mods → clear error explaining which mods are incompatible
+- The resulting MRPACK will work correctly in Modrinth App and compatible launchers
