@@ -64,6 +64,31 @@ export default {
           DEFAULT: "hsl(142 76% 36%)",
           foreground: "hsl(0 0% 98%)",
         },
+        // Expressive Design System Colors
+        expressive: {
+          primary: "hsl(var(--expressive-primary))",
+          glow: "hsl(var(--expressive-glow))",
+          background: "hsl(var(--expressive-background))",
+          surface: "hsl(var(--expressive-surface))",
+          "surface-hover": "hsl(var(--expressive-surface-hover))",
+          foreground: "hsl(var(--expressive-foreground))",
+          muted: "hsl(var(--expressive-muted))",
+          border: "hsl(var(--expressive-border))",
+        },
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+        // Expressive border radius
+        "expressive-sm": "var(--radius-expressive-sm)",
+        "expressive": "var(--radius-expressive)",
+        "expressive-lg": "var(--radius-expressive-lg)",
+        "expressive-xl": "var(--radius-expressive-xl)",
+      },
+      boxShadow: {
+        expressive: "var(--shadow-expressive)",
+        "expressive-lg": "var(--shadow-expressive-lg)",
       },
       borderRadius: {
         lg: "var(--radius)",

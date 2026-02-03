@@ -117,6 +117,51 @@ All colors MUST be HSL.
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
+
+  /* ==========================================
+     Material 3 Expressive Design System
+     ========================================== */
+  
+  :root, .dark {
+    /* Expressive Color Palette */
+    --expressive-primary: 280 70% 55%;
+    --expressive-glow: 250 80% 60%;
+    --expressive-background: 280 15% 6%;
+    --expressive-surface: 280 10% 10%;
+    --expressive-surface-hover: 280 10% 14%;
+    --expressive-foreground: 0 0% 98%;
+    --expressive-muted: 280 5% 55%;
+    --expressive-border: 280 10% 20%;
+    
+    /* Expressive Border Radius */
+    --radius-expressive-sm: 16px;
+    --radius-expressive: 24px;
+    --radius-expressive-lg: 32px;
+    --radius-expressive-xl: 40px;
+    
+    /* Expressive Shadows */
+    --shadow-expressive: 0 8px 24px -4px hsl(280 70% 55% / 0.3), 0 4px 12px -2px hsl(0 0% 0% / 0.2);
+    --shadow-expressive-lg: 0 16px 48px -8px hsl(280 70% 55% / 0.4), 0 8px 24px -4px hsl(0 0% 0% / 0.3);
+    
+    /* Expressive Easing */
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-spring-soft: cubic-bezier(0.25, 1.25, 0.5, 1);
+    --ease-spring-bouncy: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  .light {
+    --expressive-primary: 280 70% 50%;
+    --expressive-glow: 250 80% 55%;
+    --expressive-background: 280 5% 98%;
+    --expressive-surface: 280 5% 95%;
+    --expressive-surface-hover: 280 5% 92%;
+    --expressive-foreground: 280 15% 10%;
+    --expressive-muted: 280 5% 45%;
+    --expressive-border: 280 10% 88%;
+    
+    --shadow-expressive: 0 8px 24px -4px hsl(280 70% 50% / 0.2), 0 4px 12px -2px hsl(0 0% 0% / 0.1);
+    --shadow-expressive-lg: 0 16px 48px -8px hsl(280 70% 50% / 0.3), 0 8px 24px -4px hsl(0 0% 0% / 0.15);
+  }
 }
 
 @layer base {
@@ -144,6 +189,71 @@ All colors MUST be HSL.
 
   .glass-button:hover {
     box-shadow: var(--shadow-glow);
+  }
+}
+
+/* Expressive Animation Keyframes */
+@keyframes expressive-float {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-20px) scale(1.02);
+  }
+}
+
+@keyframes expressive-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes expressive-slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes expressive-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(-8px);
+  }
+  50% {
+    transform: translateY(0);
+  }
+  75% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes spring-pop {
+  0% {
+    transform: scale(0.9);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+  75% {
+    transform: scale(0.98);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 

@@ -1,10 +1,42 @@
+import { useRef, useCallback } from "react"
 import { FileArchive, Zap, Shield, Download } from "lucide-react"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { FileUpload } from "@/components/FileUpload"
 import { FeatureCard } from "@/components/FeatureCard"
 import { InstallButton } from "@/components/InstallButton"
+import { useBetaUI } from "@/contexts/BetaUIContext"
+import { useToast } from "@/hooks/use-toast"
+import ExpressiveIndex from "@/pages/ExpressiveIndex"
 
 const Index = () => {
+  const { isBetaUI, toggleBetaUI } = useBetaUI()
+  const { toast } = useToast()
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null)
+
+  const handlePressStart = useCallback(() => {
+    longPressTimer.current = setTimeout(() => {
+      // Haptic feedback
+      if (navigator.vibrate) navigator.vibrate(50)
+      toggleBetaUI()
+      toast({
+        title: isBetaUI ? "Classic UI Enabled" : "Beta UI Enabled",
+        description: isBetaUI ? "Switched back to classic design" : "Experimental design active!",
+      })
+    }, 1500)
+  }, [toggleBetaUI, toast, isBetaUI])
+
+  const handlePressEnd = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }, [])
+
+  // Render Expressive UI if beta mode is enabled
+  if (isBetaUI) {
+    return <ExpressiveIndex />
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Gradient Background */}
@@ -28,7 +60,15 @@ const Index = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b border-border/20 bg-background/50 backdrop-blur-2xl">
         <nav className="container mx-auto px-4 py-4 flex items-center justify-between" aria-label="Main navigation">
-          <div className="flex items-center space-x-2 group">
+          {/* Logo with long-press handler */}
+          <div 
+            className="flex items-center space-x-2 group cursor-pointer select-none"
+            onMouseDown={handlePressStart}
+            onMouseUp={handlePressEnd}
+            onMouseLeave={handlePressEnd}
+            onTouchStart={handlePressStart}
+            onTouchEnd={handlePressEnd}
+          >
             <div 
               className="rounded-xl p-2 transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-primary/20" 
               style={{ background: 'var(--gradient-primary)' }} 
