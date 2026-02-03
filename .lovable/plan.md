@@ -1,158 +1,216 @@
 
-# Fix ZIP to MRPACK Conversion - Proper Modrinth Format
+# Hidden Beta UI Toggle with Material 3 Expressive Design
 
-## Problem Summary
+## Overview
 
-The current ZIP to MRPACK conversion is fundamentally broken because it:
-1. Copies all mod JAR files into `overrides/mods/` folder
-2. Creates an empty `files: []` array in `modrinth.index.json`
-3. Results in the same content as the original ZIP, just renamed
-
-A **true MRPACK file** should:
-- Contain `modrinth.index.json` with download URLs for each mod (from Modrinth CDN)
-- Only store non-mod files (configs, scripts, resources) in `overrides/`
-- NOT include mod JARs directly - they are downloaded by the launcher using the URLs
-
-## Solution Approach
-
-### Step 1: Hash Each Mod File
-For each `.jar` file in the input ZIP's `mods/` folder:
-- Read the file as ArrayBuffer
-- Compute SHA512 hash using Web Crypto API (`crypto.subtle.digest`)
-- Store mapping: hash → filename → file content
-
-### Step 2: Query Modrinth API
-Call `POST https://api.modrinth.com/v2/version_files` with:
-```json
-{
-  "hashes": ["sha512hash1", "sha512hash2", ...],
-  "algorithm": "sha512"
-}
-```
-
-Modrinth returns a map of hash → version info including:
-- `files[].url` - CDN download URL
-- `files[].hashes.sha512` - File hash
-- `files[].filename` - Original filename
-- `files[].size` - File size in bytes
-
-### Step 3: Build modrinth.index.json
-Create the proper structure with the `files` array populated:
-```json
-{
-  "formatVersion": 1,
-  "game": "minecraft",
-  "versionId": "1.0.0",
-  "name": "Pack Name",
-  "files": [
-    {
-      "path": "mods/sodium-fabric-1.20.1.jar",
-      "hashes": {
-        "sha512": "abc123...",
-        "sha1": "def456..."
-      },
-      "downloads": ["https://cdn.modrinth.com/..."],
-      "fileSize": 123456
-    }
-  ],
-  "dependencies": {
-    "minecraft": "1.20.1",
-    "fabric-loader": "0.14.21"
-  }
-}
-```
-
-### Step 4: Handle Unmatched Mods
-Per user preference: **Fail conversion** if any mod is not found on Modrinth.
-
-Show an error listing which mods could not be matched, so the user knows what's incompatible.
-
-### Step 5: Create MRPACK Output
-- Add `modrinth.index.json` to the root
-- Add non-mod files (configs, scripts, resources) to `overrides/`
-- Do NOT include mod JARs in the output (they're referenced by URL)
+This plan implements a hidden "beta UI" mode accessible by long-pressing the header logo. When enabled, the entire application switches to a new Material 3 Expressive design inspired by PixelPlayer.
 
 ---
 
-## Technical Implementation
+## Part 1: Beta Mode Infrastructure
 
-### New Helper: Compute SHA512 Hash
-```text
-async function computeSha512(data: ArrayBuffer): Promise<string> {
-  const hashBuffer = await crypto.subtle.digest('SHA-512', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-}
-```
+### 1.1 Create Beta UI Context Provider
 
-### New Helper: Query Modrinth Version Files API
-```text
-async function lookupModsOnModrinth(hashes: string[]): Promise<Map<hash, ModrinthVersion>> {
-  const response = await fetch('https://api.modrinth.com/v2/version_files', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'User-Agent': 'MRPackConverter/1.0'
-    },
-    body: JSON.stringify({
-      hashes: hashes,
-      algorithm: 'sha512'
-    })
-  })
-  return response.json()
-}
-```
+Create a new context to manage the beta UI state persistently using localStorage.
 
-### Updated convertZipToMrpack Flow
+**File: `src/contexts/BetaUIContext.tsx`**
 
-```text
-1. Read ZIP file
-2. Parse manifest.json for Minecraft version and loader info
-3. Collect all mod files from mods/ folder
-4. For each mod JAR:
-   a. Read file content
-   b. Compute SHA512 hash
-   c. Store in map: hash → { filename, content }
-5. Call Modrinth API with all hashes
-6. Check response:
-   - If any hash is missing from response → FAIL with list of unmatchable mods
-   - If all matched → continue
-7. Build modrinth.index.json with files[] array from API response
-8. Create MRPACK:
-   - Add modrinth.index.json at root
-   - Add configs, scripts, resources to overrides/
-   - Do NOT add mod JARs (they're URL-referenced)
-9. Return MRPACK blob for download
-```
+- Store `isBetaUI` boolean state
+- Persist preference in localStorage under key `beta-ui-enabled`
+- Provide toggle function
+- Wrap app in this provider
+
+### 1.2 Add Long-Press Detection to Header Logo
+
+Modify `src/pages/Index.tsx` header section:
+
+- Add `onTouchStart`, `onTouchEnd`, `onMouseDown`, `onMouseUp` handlers to the logo container
+- Trigger after 1.5 seconds of continuous press
+- Show a toast notification: "Beta UI [Enabled/Disabled]"
+- Provide subtle haptic feedback (vibrate API if available)
 
 ---
 
-## Files to Modify
+## Part 2: Material 3 Expressive Design System
 
-| File | Changes |
-|------|---------|
-| `src/components/FileUpload.tsx` | Complete rewrite of `convertZipToMrpack` function with hash computation, Modrinth API lookup, proper MRPACK structure |
+### 2.1 New CSS Variables for Expressive Mode
+
+**File: `src/index.css`** - Add new CSS class `.expressive`
+
+New design tokens:
+- `--radius-expressive: 24px` (large squircle-like corners)
+- `--radius-expressive-lg: 32px` (extra large for cards/containers)
+- `--radius-expressive-sm: 16px` (smaller elements)
+- Vibrant color palette with higher saturation
+- Expressive shadows with color tinting
+- Spring-based animation timing functions
+
+### 2.2 New Tailwind Configuration
+
+**File: `tailwind.config.ts`** - Add expressive utilities
+
+New additions:
+- `rounded-expressive`, `rounded-expressive-lg`, `rounded-expressive-sm` border radius utilities
+- Spring-based keyframe animations (`spring-bounce`, `spring-pop`, `spring-slide`)
+- Expressive shadow utilities
 
 ---
 
-## Error Handling
+## Part 3: Complete UI Redesign Components
 
-When mods cannot be found on Modrinth, show a clear error:
+### 3.1 Expressive Index Page
+
+**File: `src/pages/ExpressiveIndex.tsx`** - New page component
+
+Design characteristics:
+- **Header**: Larger logo with pill-shaped container, floating appearance with subtle bounce on hover
+- **Hero Section**: Bold typography with emphasis, animated gradient text, larger spacing
+- **Feature Cards**: Squircle-shaped cards (32px radius), more prominent shadows, spring hover animations
+- **File Upload Zone**: Large rounded container (32px radius), expressive drop state with scale animation
+- **Buttons**: Fully rounded pill shape, spring-based press animation, prominent shadows
+- **Footer**: Simplified, modern layout with large rounded sections
+
+### 3.2 Expressive Feature Card
+
+**File: `src/components/ExpressiveFeatureCard.tsx`**
+
+- Large squircle shape (32px radius)
+- Floating appearance with subtle shadow
+- Spring-based hover animation (scale + shadow)
+- Icon with gradient background in pill container
+- Bold heading with emphasis
+
+### 3.3 Expressive File Upload
+
+**File: `src/components/ExpressiveFileUpload.tsx`**
+
+- Large rounded upload zone (32px radius)
+- Expressive drag state with scale + glow animation
+- Pill-shaped tab switcher for conversion modes
+- Progress indicator with spring animation
+- Success/error states with playful iconography
+
+### 3.4 Expressive Button Variants
+
+**File: `src/components/ui/expressive-button.tsx`**
+
+New button component with:
+- Fully rounded (pill) shapes as default
+- Spring-based press animation (scale down with bounce back)
+- Expressive shadows with color tinting
+- Bold typography
+
+### 3.5 Expressive Theme Toggle
+
+**File: `src/components/ExpressiveThemeToggle.tsx`**
+
+- Larger toggle with pill shape
+- Expressive animation between sun/moon
+- Bounce/spring effect on toggle
+
+---
+
+## Part 4: Animation System
+
+### 4.1 Spring Animation Keyframes
+
+Add to `tailwind.config.ts` and `src/index.css`:
 
 ```text
-"Conversion failed: The following mods are not available on Modrinth:
- - mod1.jar
- - mod2.jar
+Spring animations:
+- spring-pop: Scale from 0.9 to 1.05 to 1 with overshoot
+- spring-press: Scale to 0.95 then spring back to 1
+- spring-slide-up: Translate with spring easing
+- spring-bounce: Vertical bounce with decay
+- spring-shake: Horizontal shake for errors
+```
 
-These mods may be CurseForge-exclusive or custom mods. 
-Only mods published on Modrinth can be included in MRPACK format."
+### 4.2 CSS Custom Easing
+
+```text
+Expressive timing functions:
+- --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1)
+- --ease-spring-soft: cubic-bezier(0.25, 1.25, 0.5, 1)
+- --ease-spring-bouncy: cubic-bezier(0.68, -0.55, 0.265, 1.55)
 ```
 
 ---
 
-## Expected Outcome
+## Part 5: Integration
 
-After this fix:
-- ZIP with CurseForge mods that exist on Modrinth → proper small MRPACK with download URLs
-- ZIP with CurseForge-exclusive mods → clear error explaining which mods are incompatible
-- The resulting MRPACK will work correctly in Modrinth App and compatible launchers
+### 5.1 Conditional Rendering in Index
+
+**File: `src/pages/Index.tsx`**
+
+- Import `useBetaUI` hook
+- If `isBetaUI` is true, render `<ExpressiveIndex />` instead
+- Pass same functionality props
+
+### 5.2 App Provider Wrapping
+
+**File: `src/App.tsx`**
+
+- Wrap with `<BetaUIProvider>`
+
+---
+
+## Part 6: Design Specifications
+
+### Color Palette (Expressive Mode)
+| Token | Value | Usage |
+|-------|-------|-------|
+| Primary | `hsl(280 70% 55%)` | More vibrant purple |
+| Primary Glow | `hsl(250 80% 60%)` | Gradient accent |
+| Surface | `hsl(280 15% 8%)` | Dark backgrounds |
+| Surface Container | `hsl(280 10% 12%)` | Cards, containers |
+
+### Border Radius Scale
+| Name | Value | Usage |
+|------|-------|-------|
+| expressive-sm | 16px | Small buttons, badges |
+| expressive | 24px | Standard elements |
+| expressive-lg | 32px | Cards, containers |
+| expressive-xl | 40px | Hero elements |
+| full | 9999px | Pills, fully rounded |
+
+### Typography Scale (Expressive)
+- Display: 64px, weight 800, tight tracking
+- Heading: 32px, weight 700
+- Body: 18px, weight 400, relaxed leading
+- Caption: 14px, weight 500
+
+### Animation Timings
+| Animation | Duration | Easing |
+|-----------|----------|--------|
+| Hover | 200ms | spring-soft |
+| Press | 150ms | spring-bouncy |
+| Page transition | 400ms | spring |
+| Micro-interaction | 300ms | spring |
+
+---
+
+## Files to Create/Modify
+
+| File | Action | Description |
+|------|--------|-------------|
+| `src/contexts/BetaUIContext.tsx` | Create | Beta UI state management |
+| `src/pages/ExpressiveIndex.tsx` | Create | New expressive UI page |
+| `src/components/ExpressiveFeatureCard.tsx` | Create | Expressive feature card |
+| `src/components/ExpressiveFileUpload.tsx` | Create | Expressive file upload |
+| `src/components/ui/expressive-button.tsx` | Create | Pill-shaped expressive button |
+| `src/components/ExpressiveThemeToggle.tsx` | Create | Animated expressive toggle |
+| `src/index.css` | Modify | Add expressive CSS variables |
+| `tailwind.config.ts` | Modify | Add expressive utilities |
+| `src/pages/Index.tsx` | Modify | Add long-press handler + conditional render |
+| `src/App.tsx` | Modify | Wrap with BetaUIProvider |
+
+---
+
+## User Experience Flow
+
+1. User long-presses the "MRPack Converter" logo in header (1.5 seconds)
+2. Toast notification appears: "Beta UI Enabled - Experimental design active!"
+3. Page smoothly transitions to expressive design
+4. All interactions use spring-based animations
+5. Preference persists across sessions via localStorage
+6. Long-press again to toggle back to classic UI
