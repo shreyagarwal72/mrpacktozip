@@ -1,6 +1,6 @@
 # MRPack Converter - Free MRPACK to ZIP Converter
 
-🚀 **[Try it now: https://mrpacktozip.lovable.app](https://mrpacktozip.lovable.app)**
+🚀 **[Try it now: https://mrpacktozip.vercel.app](https://mrpacktozip.vercel.app)**
 
 Convert between Modrinth (.mrpack) and ZIP formats effortlessly with our free, fast, and secure online converter. The ultimate tool for Minecraft modpack conversion - no registration required!
 
